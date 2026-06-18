@@ -28,6 +28,13 @@ const checkEnvVariables = (req, res, next) => {
 	console.log(` - PHONE_NUMBER_ID: ${maskSecret(PHONE_NUMBER_ID)}`);
 
 	if (missing.length > 0) {
+		const envKeys = Object.keys(process.env).filter(key => {
+			return !key.startsWith("npm_") && 
+			       !key.startsWith("BASH_") && 
+			       !["PATH", "LS_COLORS", "SHLVL", "_", "PWD"].includes(key);
+		});
+		console.log(`[DEBUG] Available environment keys in this process:`, envKeys);
+
 		const errMsg = `Missing environment variables: ${missing.join(", ")}`;
 		console.error(`[ERROR] ${errMsg}`);
 		return res.status(500).json({
