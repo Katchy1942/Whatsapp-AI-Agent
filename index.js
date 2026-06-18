@@ -64,7 +64,9 @@ app.post("/webhook", checkEnvVariables, (req, res) => {
 	if (message && message.type === "text") {
 		const from = message.from;
 		const text = message.text.body.toLowerCase().trim();
-		handleMessage(from, text);
+		handleMessage(from, text).catch(err => {
+			console.error("[ERROR] Unhandled error during message processing:", err.message);
+		});
 	}
 
 	res.sendStatus(200);
@@ -117,16 +119,24 @@ async function handleMessage(from, text) {
 }
 
 async function sendMessage(to, body) {
-	await axios.post(
-		`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
-		{
-			messaging_product: "whatsapp",
-			to,
-			type: "text",
-			text: { body },
-		},
-		{ headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } },
-	);
+	try {
+		await axios.post(
+			`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+			{
+				messaging_product: "whatsapp",
+				to,
+				type: "text",
+				text: { body },
+			},
+			{ headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } },
+		);
+		console.log(`[INFO] Message successfully sent to ${to}`);
+	} catch (error) {
+		console.error(`[ERROR] Failed to send message to ${to}:`, error.message);
+		if (error.response) {
+			console.error("[ERROR] Meta/Facebook API Response Data:", JSON.stringify(error.response.data, null, 2));
+		}
+	}
 }
 
 const PORT = process.env.PORT || 3000;
