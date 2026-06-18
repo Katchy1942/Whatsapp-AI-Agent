@@ -5,6 +5,9 @@ app.use(express.json());
 
 // Webhook verification
 app.get("/webhook", (req, res) => {
+	console.log("ENV TOKEN:", process.env.VERIFY_TOKEN);
+	console.log("QUERY TOKEN:", req.query["hub.verify_token"]);
+
 	const mode = req.query["hub.mode"];
 	const token = req.query["hub.verify_token"];
 	const challenge = req.query["hub.challenge"];
