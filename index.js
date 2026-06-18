@@ -8,7 +8,38 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
-app.get("/webhook", (req, res) => {
+// Helper to safely mask secrets in logs
+const maskSecret = (secret) => {
+	if (!secret) return "undefined";
+	if (secret.length <= 6) return "*".repeat(secret.length);
+	return `${secret.slice(0, 3)}...${secret.slice(-3)} (length: ${secret.length})`;
+};
+
+// Middleware to verify environment variables are loaded and log status
+const checkEnvVariables = (req, res, next) => {
+	const missing = [];
+	if (!VERIFY_TOKEN) missing.push("VERIFY_TOKEN");
+	if (!ACCESS_TOKEN) missing.push("ACCESS_TOKEN");
+	if (!PHONE_NUMBER_ID) missing.push("PHONE_NUMBER_ID");
+
+	console.log(`[INFO] Webhook ${req.method} request received. Variable status:`);
+	console.log(` - VERIFY_TOKEN: ${maskSecret(VERIFY_TOKEN)}`);
+	console.log(` - ACCESS_TOKEN: ${maskSecret(ACCESS_TOKEN)}`);
+	console.log(` - PHONE_NUMBER_ID: ${maskSecret(PHONE_NUMBER_ID)}`);
+
+	if (missing.length > 0) {
+		const errMsg = `Missing environment variables: ${missing.join(", ")}`;
+		console.error(`[ERROR] ${errMsg}`);
+		return res.status(500).json({
+			error: "Configuration Error",
+			message: `${errMsg}. Please configure them in your Railway project settings.`,
+			missing
+		});
+	}
+	next();
+};
+
+app.get("/webhook", checkEnvVariables, (req, res) => {
 	const mode = req.query["hub.mode"];
 	const token = req.query["hub.verify_token"];
 	const challenge = req.query["hub.challenge"];
@@ -20,7 +51,7 @@ app.get("/webhook", (req, res) => {
 	}
 });
 
-app.post("/webhook", (req, res) => {
+app.post("/webhook", checkEnvVariables, (req, res) => {
 	const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
 	if (message && message.type === "text") {
